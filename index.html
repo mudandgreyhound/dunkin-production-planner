@@ -1405,7 +1405,27 @@ const tip=$('#tip');document.addEventListener('mouseover',e=>{const t=e.target.c
 document.addEventListener('mousemove',e=>{if(tip.hidden)return;const w=tip.offsetWidth,h=tip.offsetHeight,x=e.clientX+14+w>innerWidth?e.clientX-w-10:e.clientX+14,y=e.clientY+14+h>innerHeight?e.clientY-h-10:e.clientY+14;tip.style.left=x+'px';tip.style.top=y+'px';});
 document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{view.tab=b.dataset.tab;try{history.replaceState(null,'','#'+view.tab)}catch(e){}render();});
 window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(TABS.includes(h)){view.tab=h;render();}});
+// ---- prefill P&L actuals จากยอดขายปิดวันจริง (settled) ผ่าน API; ไม่ทับค่าที่ Finance กรอกเอง ----
+async function prefillSettledPnl(){
+  try{
+    const base = location.hostname.endsWith('github.io')
+      ? 'https://dunkin-production-planner-api.mobile1234.site' : '';
+    if(!base) return;
+    const r = await fetch(base + '/api/planner/pnl'); if(!r.ok) return;
+    const d = await r.json(); if(!d || !d.available || !d.daily) return;
+    const byDate = {}; d.daily.forEach(x=>{ byDate[x.biz_date] = {sales:x.net_sales, made:x.pieces}; });
+    let cur=null; const wk=[];
+    for(const dd of DAYS){ if(!cur || dowOf(dd)===0){ cur={from:dd, days:[]}; wk.push(cur);} cur.days.push(dd); }
+    let changed=false;
+    for(const w of wk){ let s=0,m=0,thru=null,has=false;
+      for(const dd of w.days){ const b=byDate[dd]; if(b){ has=true; s+=b.sales; m+=b.made; thru=dd; } }
+      if(has && !D.actuals[w.from]){ D.actuals[w.from]={sales:Math.round(s), made:Math.round(m), thru:thru, settled:true}; changed=true; }
+    }
+    if(changed) render();
+  }catch(e){}
+}
 init();
+prefillSettledPnl();
 </script>
 
 </body></html>
