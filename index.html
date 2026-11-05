@@ -1628,8 +1628,33 @@ async function prefillSettledPnl(){
     if(changed) render();
   }catch(e){}
 }
+// ---- ปฏิทินโปรโมชันจริง (display-only; ไม่กระทบตัวเลขผลิต/P&L) ผ่าน API ----
+async function loadPromoCalendar(){
+  try{
+    const base = location.hostname.endsWith('github.io')
+      ? 'https://dunkin-production-planner-api.mobile1234.site' : '';
+    if(!base) return;
+    const r = await fetch(base + '/api/planner/promotions'); if(!r.ok) return;
+    const d = await r.json(); if(!d || !d.available || !d.promos) return;
+    const d0=DAYS[0], d1=DAYS[DAYS.length-1];
+    const clamp=(x)=> !x ? null : (x<d0?d0:(x>d1?d1:x));
+    const list=d.promos.filter(p=>p.cp_type===3 && p.packages>0 && p.fr_date && p.to_date
+                 && p.to_date>=d0 && p.fr_date<=d1).slice(0,12);
+    let added=false;
+    for(const p of list){
+      const id='gd_'+p.promo_code; if(D.events[id]) continue;
+      const from=clamp(p.fr_date), to=clamp(p.to_date); if(!from||!to) continue;
+      D.events[id]={id,type:'promo',name:(p.name||p.promo_code),from,to,on:true,
+        mode:'pcs',pcs:{},paidShare:.5,cost:0,gdSource:true,
+        note:'จาก GD (ยอดจริง): '+Math.round(p.packages).toLocaleString()+' แพ็ก · ส่วนลด ฿'+Math.round(p.disc).toLocaleString()+' · '+p.shops+' สาขา · display only'};
+      added=true;
+    }
+    if(added) render();
+  }catch(e){}
+}
 init();
 prefillSettledPnl();
+loadPromoCalendar();
 
 // ---- Seasonal flavour (LTO) planning: rough P&L per campaign ----
 function renderLtoPnl(){const LP=C.LP||[],tb=$('#ev-lto-pnl'),pnl=$('#ev-lto-pnl-panel');if(!tb)return;pnl.hidden=!LP.length;if(!LP.length)return;
