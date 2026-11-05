@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dunkin' Production Planner</title>
+<style>
+  :root{
+    --dd-orange:#ff6e0d; --dd-pink:#e11383; --dd-brown:#5b3a1a;
+    --bg:#f6f4f1; --surface:#ffffff; --border:#e7e2db; --text:#2a2320;
+    --muted:#7d746c; --shadow:0 1px 3px rgba(0,0,0,.08),0 6px 20px rgba(0,0,0,.04);
+    --ok:#1b8a4b; --warn:#c97a07; --bad:#c0392b;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#1a1613; --surface:#241f1b; --border:#39312b; --text:#f2ece6;
+      --muted:#a79b90; --shadow:0 1px 3px rgba(0,0,0,.4);
+      --ok:#4ccf86; --warn:#eab308; --bad:#f87171;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1a1613; --surface:#241f1b; --border:#39312b; --text:#f2ece6;
+    --muted:#a79b90; --shadow:0 1px 3px rgba(0,0,0,.4);
+    --ok:#4ccf86; --warn:#eab308; --bad:#f87171;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Thai",sans-serif;
+    line-height:1.5}
+  header{background:linear-gradient(90deg,var(--dd-orange),var(--dd-pink));color:#fff;
+    padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .logo{font-weight:800;font-size:19px;letter-spacing:.2px;display:flex;align-items:center;gap:8px}
+  .logo .dot{width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.35)}
+  .badge{background:rgba(255,255,255,.22);padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
+  .spacer{flex:1}
+  #conn{font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px;
+    background:rgba(255,255,255,.18);padding:5px 11px;border-radius:999px}
+  #conn .d{width:9px;height:9px;border-radius:50%;background:#ffd;transition:.3s}
+  .theme-btn{background:rgba(255,255,255,.2);border:0;color:#fff;cursor:pointer;
+    border-radius:8px;padding:6px 10px;font-size:13px}
+  nav{background:var(--surface);border-bottom:1px solid var(--border);
+    display:flex;gap:2px;overflow-x:auto;padding:0 8px;position:sticky;top:0;z-index:5}
+  nav button{background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);
+    padding:12px 14px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
+  nav button.active{color:var(--dd-pink);border-bottom-color:var(--dd-pink)}
+  nav button:hover{color:var(--text)}
+  main{max-width:1060px;margin:0 auto;padding:16px}
+  .tab{display:none}.tab.active{display:block}
+  h2{font-size:18px;margin:4px 0 2px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:15px;box-shadow:var(--shadow)}
+  .card .k{font-size:12.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+  .card .v{font-size:26px;font-weight:800;margin-top:4px}
+  .card .m{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:16px;box-shadow:var(--shadow);margin-top:16px}
+  .panel h3{margin:0 0 12px;font-size:15px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700}
+  .pill.ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+  .pill.warn{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+  .pill.bad{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
+  .att{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)}
+  .att:last-child{border-bottom:0}
+  .att .ic{font-size:18px;line-height:1.2}
+  .att .t{font-weight:600;font-size:14px}
+  .att .d{font-size:12.5px;color:var(--muted)}
+  .empty{color:var(--muted);text-align:center;padding:40px 16px;font-size:14px}
+  .soon{border:1.5px dashed var(--border);border-radius:14px;padding:28px 18px;text-align:center;color:var(--muted)}
+  .soon .big{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px}
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:24px 16px}
+  a{color:var(--dd-pink)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="dot"></span> Dunkin' Production Planner</div>
+  <span class="badge">v2 · Kitchen</span>
+  <div class="spacer"></div>
+  <div id="conn"><span class="d"></span><span id="connText">กำลังเชื่อมต่อ…</span></div>
+  <button class="theme-btn" id="themeBtn" title="สลับโหมดสี">🌓</button>
+</header>
+
+<nav id="nav"></nav>
+
+<main>
+  <!-- SUMMARY -->
+  <section class="tab active" data-tab="summary">
+    <h2>ภาพรวม (Summary)</h2>
+    <div class="sub">สถานะการเชื่อมต่อข้อมูลจาก GD_Dashboard และความพร้อมของแต่ละส่วน</div>
+    <div class="cards" id="kpis">
+      <div class="card"><div class="k">สถานะ API</div><div class="v" id="kApi">—</div><div class="m">dunkin-production-planner-api</div></div>
+      <div class="card"><div class="k">ตารางข้อมูล</div><div class="v" id="kTables">—</div><div class="m">ใน GD_Dashboard</div></div>
+      <div class="card"><div class="k">สาขา</div><div class="v" id="kShops">—</div><div class="m">dim_shop</div></div>
+      <div class="card"><div class="k">ครัว</div><div class="v" id="kKitchens">—</div><div class="m">kitchen_status</div></div>
+    </div>
+
+    <div class="panel">
+      <h3>ความพร้อมของข้อมูลหลัก (live)</h3>
+      <table>
+        <thead><tr><th>ส่วนงาน</th><th>ตารางหลัก</th><th class="num">แถว</th><th>ความสด</th><th>สถานะ</th></tr></thead>
+        <tbody id="readyBody"><tr><td colspan="5" class="empty">กำลังโหลด…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h3>ต้องจัดการ (Needs attention)</h3>
+      <div id="attList"></div>
+    </div>
+  </section>
+
+  <!-- OTHER TABS (placeholders tied to gap analysis) -->
+  <section class="tab" data-tab="forecast"></section>
+  <section class="tab" data-tab="marketing"></section>
+  <section class="tab" data-tab="production"></section>
+  <section class="tab" data-tab="rawmat"></section>
+  <section class="tab" data-tab="sync"></section>
+  <section class="tab" data-tab="pnl"></section>
+  <section class="tab" data-tab="settings"></section>
+</main>
+
+<footer>
+  Dunkin' Production Planner · ข้อมูลจาก GD_Dashboard (อ่านอย่างเดียว) ·
+  <span id="apiBase"></span>
+</footer>
+
+<script>
+// ---- API base: ใช้ public cloudflare URL ได้ทุกที่, LAN ใช้ตรง ----
+const API = (location.hostname === "10.8.1.88" || location.hostname === "localhost")
+  ? "http://10.8.1.88:8607"
+  : "https://dunkin-production-planner-api.mobile1234.site";
+document.getElementById("apiBase").textContent = API;
+
+// ---- tabs ----
+const TABS = [
+  ["summary","Summary"],["forecast","Store forecast"],["marketing","Marketing plan"],
+  ["production","Production plan"],["rawmat","Raw materials"],["sync","Store–kitchen sync"],
+  ["pnl","P&L"],["settings","Settings"]
+];
+// สถานะความพร้อมแต่ละแท็บ (จาก gap analysis)
+const TAB_STATUS = {
+  forecast:{s:"warn",title:"Store forecast",note:"ยอดขายจริง (fact_sale_donut) สดถึงวันนี้ ใช้คำนวณได้ · ตารางพยากรณ์เดิม (forecast_gr) ค้างที่ มิ.ย. 2026",src:"fact_sale_donut · forecast_gr · dim_shop"},
+  marketing:{s:"warn",title:"Marketing plan",note:"โปรโมชันดึงจาก coupon_master ได้ (Active 153) · LTO และสินค้าใหม่ยังไม่มีตาราง ต้องสร้างใหม่",src:"coupon_master"},
+  production:{s:"warn",title:"Production plan",note:"ยอดผลิตจริง (fact_kitchen_production) หยุด 7 ต.ค. · กำลังการผลิตต่อครัวยังไม่มี ต้องให้ครัวกรอก",src:"fact_kitchen_production · kitchen_status"},
+  rawmat:{s:"warn",title:"Raw materials",note:"สูตร (recipe_flat_tb) ครบ · แต่ยังขาดต้นทุนต่อหน่วยวัตถุดิบ จึงคิดมูลค่ายังไม่ได้",src:"recipe_flat_tb · forecast_rawmat"},
+  sync:{s:"ok",title:"Store–kitchen sync",note:"มี sync_run/result/missing + kitchen_status · ต้องเคลียร์นิยามว่าจะ sync จำนวนชิ้นผลิตหรือ master",src:"sync_run · sync_result · kitchen_status"},
+  pnl:{s:"ok",title:"P&L",note:"ยอดขายสุทธิ/VAT/ส่วนลด/คูปอง (sale_monitor_rt) พร้อม · ต้นทุนวัตถุดิบรอ unit cost",src:"sale_monitor_rt · basket_daily"},
+  settings:{s:"bad",title:"Settings",note:"capacity / role / pack cost / change log เป็น config ของแอป ต้องสร้างตารางใหม่ (ไม่ได้อยู่ใน warehouse)",src:"— ต้องสร้างใหม่"}
+};
+const nav = document.getElementById("nav");
+TABS.forEach(([id,label])=>{
+  const b=document.createElement("button");
+  b.textContent=label; b.dataset.go=id; if(id==="summary")b.classList.add("active");
+  b.onclick=()=>show(id); nav.appendChild(b);
+});
+function show(id){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.tab===id));
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.go===id));
+  if(id!=="summary") renderPlaceholder(id);
+  window.scrollTo(0,0);
+}
+function renderPlaceholder(id){
+  const sec=document.querySelector(`.tab[data-tab="${id}"]`);
+  const st=TAB_STATUS[id]; if(!st||sec.dataset.done)return;
+  const label={ok:"พร้อมต่อ endpoint",warn:"มีข้อมูลบางส่วน",bad:"ต้องสร้างใหม่"}[st.s];
+  sec.innerHTML=`<h2>${st.title}</h2>
+    <div class="sub">แหล่งข้อมูล: ${st.src}</div>
+    <div class="soon"><div class="big"><span class="pill ${st.s}">${label}</span></div>
+      <div style="max-width:560px;margin:10px auto 0">${st.note}</div>
+      <div style="margin-top:14px;font-size:12.5px">หน้านี้จะเชื่อมข้อมูลจริงในเฟสถัดไป</div></div>`;
+  sec.dataset.done="1";
+}
+
+// ---- theme ----
+const tb=document.getElementById("themeBtn");
+try{const sv=localStorage.getItem("dd-theme"); if(sv)document.documentElement.dataset.theme=sv;}catch(e){}
+tb.onclick=()=>{
+  const cur=document.documentElement.dataset.theme;
+  const nx=cur==="dark"?"light":(cur==="light"?"dark":(matchMedia("(prefers-color-scheme:dark)").matches?"light":"dark"));
+  document.documentElement.dataset.theme=nx; try{localStorage.setItem("dd-theme",nx);}catch(e){}
+};
+
+// ---- live summary ----
+function setConn(ok){
+  const d=document.querySelector("#conn .d"), t=document.getElementById("connText");
+  d.style.background=ok?"#7CFC9A":"#ff9b9b"; t.textContent=ok?"เชื่อมต่อแล้ว":"เชื่อมต่อไม่ได้";
+}
+async function j(path){const r=await fetch(API+path); if(!r.ok)throw new Error(r.status); return r.json();}
+
+// map ตารางหลัก -> ส่วนงาน + ความสด (freshness เป็นข้อมูล ณ วันตรวจ 5 พ.ย. 2026)
+const READY=[
+  ["P&L / ยอดขาย","sale_monitor_rt","ถึง 5 พ.ย. 2026","ok"],
+  ["Store forecast","fact_sale_donut","ถึง 5 พ.ย. 2026","ok"],
+  ["สูตรการผลิต","recipe_flat_tb","ปัจจุบัน","ok"],
+  ["สถานะครัว","kitchen_status","ถึง 4 พ.ย. 2026","ok"],
+  ["โปรโมชัน","coupon_master","Active 153","ok"],
+  ["Production (ผลิตจริง)","fact_kitchen_production","หยุด 7 ต.ค. 2026","warn"],
+  ["Store–kitchen sync","sync_run","หยุด 15 ต.ค. 2026","warn"],
+  ["พยากรณ์ยอด","forecast_gr","ค้าง มิ.ย. 2026","bad"],
+  ["พยากรณ์วัตถุดิบ","forecast_rawmat","ค้าง มิ.ย. 2026","bad"],
+  ["ทะเบียนครัว","dim_kitchen","ว่างเปล่า","bad"],
+];
+const ATT=[
+  ["🔴","พยากรณ์ค้างที่ มิ.ย. 2026","forecast_gr / forecast_rawmat — ETL พยากรณ์หยุดรัน ต้อง rerun หรือคำนวณใหม่จากยอดขายจริง"],
+  ["🟡","ข้อมูลการผลิตหยุด 7 ต.ค.","fact_kitchen_production ไม่อัปเดต — ตรวจว่า ETL ยังทำงานไหม"],
+  ["🟡","Sync หยุด 15 ต.ค.","sync_run ครั้งล่าสุด 15 ต.ค. 2026"],
+  ["🔴","ยังไม่มี: capacity ครัว / ต้นทุนวัตถุดิบ / LTO / สินค้าใหม่","ต้องสร้างตาราง + หน้ากรอกใหม่"],
+  ["🔴","dim_kitchen ว่าง","เติมทะเบียนครัวจาก kitchen_status (14 ครัว) ได้"],
+];
+function pill(s){const l={ok:"พร้อม",warn:"บางส่วน",bad:"ต้องทำ"}[s];return `<span class="pill ${s}">${l}</span>`;}
+
+async function load(){
+  try{
+    const h=await j("/health"); setConn(h.status==="ok");
+    document.getElementById("kApi").textContent = h.status==="ok"?"ออนไลน์":"ขัดข้อง";
+    document.getElementById("kApi").style.color = h.status==="ok"?"var(--ok)":"var(--bad)";
+  }catch(e){ setConn(false); document.getElementById("kApi").textContent="ออฟไลน์";
+    document.getElementById("kApi").style.color="var(--bad)"; }
+
+  let rows=[];
+  try{ const t=await j("/api/meta/tables"); rows=t.tables||[];
+    document.getElementById("kTables").textContent=rows.length;
+  }catch(e){ document.getElementById("kTables").textContent="—"; }
+
+  const find=n=>rows.find(r=>r.name===n);
+  const shops=find("dim_shop"); document.getElementById("kShops").textContent=shops?Number(shops.approx_rows).toLocaleString():"629";
+  const ks=find("kitchen_status"); document.getElementById("kKitchens").textContent=ks?ks.approx_rows:"14";
+
+  // readiness table
+  const tb=document.getElementById("readyBody"); tb.innerHTML="";
+  READY.forEach(([area,tbl,fresh,st])=>{
+    const r=find(tbl); const n=r?Number(r.approx_rows).toLocaleString():"—";
+    tb.insertAdjacentHTML("beforeend",
+      `<tr><td>${area}</td><td style="color:var(--muted)">${tbl}</td><td class="num">${n}</td><td>${fresh}</td><td>${pill(st)}</td></tr>`);
+  });
+
+  // attention
+  const al=document.getElementById("attList"); al.innerHTML="";
+  ATT.forEach(([ic,t,d])=>al.insertAdjacentHTML("beforeend",
+    `<div class="att"><div class="ic">${ic}</div><div><div class="t">${t}</div><div class="d">${d}</div></div></div>`));
+}
+load();
+</script>
+</body>
+</html>
